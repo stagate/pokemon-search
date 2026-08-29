@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포켓몬 번호 검색기</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;background:#f4f6fb;color:#20242b}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 40px}
+.card{background:white;border-radius:20px;padding:22px;box-shadow:0 8px 30px rgba(20,30,50,.08)}
+h1{margin:0 0 6px;font-size:28px}
+.sub{color:#6b7280;margin:0 0 20px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#eef1f6;padding:5px;border-radius:13px;margin-bottom:18px}
+.tab{border:0;border-radius:10px;padding:11px;font-size:16px;font-weight:700;background:transparent;cursor:pointer}
+.tab.active{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+label{font-weight:700;display:block;margin-bottom:8px}
+.inputrow{display:flex;gap:8px}
+input{flex:1;min-width:0;border:1px solid #d5dae3;border-radius:12px;padding:13px 14px;font-size:17px;outline:none}
+input:focus{border-color:#6875f5;box-shadow:0 0 0 3px rgba(104,117,245,.12)}
+button.primary,button.secondary{border:0;border-radius:12px;padding:12px 16px;font-size:16px;font-weight:700;cursor:pointer}
+button.primary{background:#4f5eea;color:#fff}
+button.secondary{background:#edf0f5;color:#333}
+.hint{font-size:13px;color:#7a8190;margin-top:8px}
+.results{margin-top:20px;display:grid;gap:9px}
+.result{display:flex;align-items:center;justify-content:space-between;border:1px solid #e4e7ed;border-radius:13px;padding:12px 14px}
+.num{font-weight:800;min-width:52px}
+.name{font-weight:650;text-align:right;flex:1}
+.error{background:#fff4f4;border:1px solid #ffd2d2;color:#b42318;border-radius:12px;padding:12px;margin-top:16px}
+.actions{display:flex;gap:8px;margin-top:14px}
+.empty{color:#8a919d;text-align:center;padding:20px 8px;border:1px dashed #d8dce5;border-radius:13px}
+.count{font-size:13px;color:#747b88;margin-top:10px}
+@media(max-width:520px){.inputrow{flex-direction:column}button.primary{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🎮 포켓몬 번호 검색기</h1>
+    <p class="sub">싱글 / 더블 랭킹에서 번호를 최대 6마리까지 한 번에 검색하세요.</p>
+
+    <div class="tabs">
+      <button class="tab active" id="singleTab" onclick="setMode('single')">싱글</button>
+      <button class="tab" id="doubleTab" onclick="setMode('double')">더블</button>
+    </div>
+
+    <label for="numbers">번호 입력</label>
+    <div class="inputrow">
+      <input id="numbers" inputmode="numeric" autocomplete="off" placeholder="예: 1 25 48 103" onkeydown="if(event.key==='Enter') searchPokemon()">
+      <button class="primary" onclick="searchPokemon()">🔍 검색</button>
+    </div>
+    <div class="hint">공백, 쉼표(,), 슬래시(/)로 구분할 수 있습니다. 최대 6개.</div>
+
+    <div id="message"></div>
+    <div id="results" class="results">
+      <div class="empty">번호를 입력하면 포켓몬 이름이 여기에 표시됩니다.</div>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" onclick="clearAll()">↻ 초기화</button>
+      <button class="secondary" onclick="copyResults()">📋 결과 복사</button>
+    </div>
+    <div class="count" id="modeText">현재 모드: 싱글</div>
+  </div>
+</div>
+
+<script>
+const data = {
+  single: {
+      "1": "한카리아스",
+      "2": "누리레느",
+      "3": "마스카나",
+      "4": "브리두라스",
+      "5": "따라큐",
+      "6": "하마돈",
+      "7": "갸라도스",
+      "8": "마폭시",
+      "9": "망나뇽",
+      "10": "메타그로스",
+      "11": "리자몽",
+      "12": "대쓰여너(수컷)",
+      "13": "핫삼",
+      "14": "아머까오",
+      "15": "삼삼드래",
+      "16": "라이츄",
+      "17": "킬라플로르",
+      "18": "개굴닌자",
+      "19": "팬텀",
+      "20": "불카모스",
+      "21": "대도각참",
+      "22": "타부자고",
+      "23": "킬가르도(실드폼)",
+      "24": "번치코",
+      "25": "히스이 대검귀",
+      "26": "블래키",
+      "27": "찌르호크",
+      "28": "님피아",
+      "29": "루카리오",
+      "30": "워시로토무",
+      "31": "이어롭",
+      "32": "이상해꽃",
+      "33": "알로라 나인테일",
+      "34": "라우드본",
+      "35": "아쿠스타",
+      "36": "찌리배리",
+      "37": "더시마사리",
+      "38": "드래펄트",
+      "39": "대짱이",
+      "40": "플라엣테(영원의 꽃)",
+      "41": "픽시",
+      "42": "스코빌런",
+      "43": "파라블레이즈",
+      "44": "몰드류",
+      "45": "오롱털",
+      "46": "거북왕",
+      "47": "마기라스",
+      "48": "메가니움",
+      "49": "입치트",
+      "50": "포푸니크",
+      "51": "패리퍼",
+      "52": "펜드라",
+      "53": "엘풍",
+      "54": "캥카",
+      "55": "맘모꾸리",
+      "56": "잠만보",
+      "57": "클레스퍼트라",
+      "58": "파밀리쥐",
+      "59": "배바닐라",
+      "60": "우츠보트",
+      "61": "히트로토무",
+      "62": "히스이 조로아크",
+      "63": "깜까미",
+      "64": "깨비물거미",
+      "65": "저승갓숭",
+      "66": "사마자르",
+      "67": "밀로틱",
+      "68": "엘레이드",
+      "69": "꿈트렁",
+      "70": "메타몽",
+      "71": "가디안",
+      "72": "히스이 미끄래곤",
+      "73": "드래캄",
+      "74": "마릴리",
+      "75": "샤로다",
+      "76": "다크펫",
+      "77": "엠페르트",
+      "78": "무장조",
+      "79": "나무킹",
+      "80": "눈여아",
+      "81": "샹델라",
+      "82": "그우린차",
+      "83": "야도란",
+      "84": "브리무음",
+      "85": "비비용",
+      "86": "장침바루",
+      "87": "노보청",
+      "88": "에브이",
+      "89": "파르토",
+      "90": "화염레오",
+      "91": "어흥염",
+      "92": "포트데스",
+      "93": "가라르 야도킹",
+      "94": "카디나르마",
+      "95": "글라이온",
+      "96": "히스이 윈디",
+      "97": "헤라크로스",
+      "98": "코터스",
+      "99": "라플레시아",
+      "100": "왕큰부리",
+      "101": "돌핀맨(나이브폼)",
+      "102": "곤율거니",
+      "103": "프테라",
+      "104": "샤크니아",
+      "105": "샤미드",
+      "106": "두드리짱",
+      "107": "포푸니라",
+      "108": "웨이니발",
+      "109": "가라르 야도란",
+      "110": "브리가론",
+      "111": "쁘사이저",
+      "112": "야도킹",
+      "113": "장크로다일",
+      "114": "팔데아 켄타로스(블레이즈종)",
+      "115": "대쓰여너(암컷)",
+      "116": "저리더프",
+      "117": "보스로라",
+      "118": "묘두기",
+      "119": "염뉴트",
+      "120": "일레도리자드",
+      "121": "후딘",
+      "122": "히스이 모크나이퍼",
+      "123": "독침붕",
+      "124": "파이어로",
+      "125": "란쿨루스",
+      "126": "루가루암(황혼의 모습)",
+      "127": "눈설왕",
+      "128": "초염몽",
+      "129": "파비코리",
+      "130": "쥬피썬더",
+      "131": "루차불",
+      "132": "히스이 블레이범",
+      "133": "짜랑고우거",
+      "134": "데스판",
+      "135": "음번",
+      "136": "치렁",
+      "137": "얼음귀신",
+      "138": "글레이시아",
+      "139": "아리아도스",
+      "140": "만마드",
+      "141": "윈디",
+      "142": "피죤투",
+      "143": "모단단게",
+      "144": "칼라마네로",
+      "145": "나인테일",
+      "146": "악비아르",
+      "147": "토대부기",
+      "148": "요가램",
+      "149": "화강돌",
+      "150": "전룡",
+      "151": "강철톤",
+      "152": "왕구리",
+      "153": "커트로토무",
+      "154": "블로스터",
+      "155": "달코퀸",
+      "156": "헬가",
+      "157": "데스니칸",
+      "158": "괴력몬",
+      "159": "클레피",
+      "160": "나루림",
+      "161": "거북손데스",
+      "162": "콜로솔트",
+      "163": "모르페코(배부른 모양)",
+      "164": "쏘콘",
+      "165": "피카츄",
+      "166": "염무왕",
+      "167": "과미드라",
+      "168": "앱솔",
+      "169": "대로트",
+      "170": "미끄래곤",
+      "171": "로즈레이드",
+      "172": "골루그",
+      "173": "조로아크",
+      "174": "거대코뿌리",
+      "175": "팔데아 켄타로스(워터종)",
+      "176": "크레베이스",
+      "177": "몽얌나",
+      "178": "키키링",
+      "179": "리피아",
+      "180": "레파르다스",
+      "181": "아보크",
+      "182": "할비롱",
+      "183": "사다이사",
+      "184": "마휘핑",
+      "185": "다부니",
+      "186": "부란다",
+      "187": "바리톱스",
+      "188": "아마루르가",
+      "189": "썬더볼트",
+      "190": "견고라스",
+      "191": "부스터",
+      "192": "독개굴",
+      "193": "냐오닉스(수컷)",
+      "194": "에몽가",
+      "195": "플라제스",
+      "196": "블레이범",
+      "197": "펌킨인(특대과종)",
+      "198": "폭타",
+      "199": "대여르",
+      "200": "마임꽁꽁"
+    },
+  double: {
+      "1": "대도각참",
+      "2": "한카리아스",
+      "3": "포푸니크",
+      "4": "대쓰여너(수컷)",
+      "5": "그우린차",
+      "6": "엘풍",
+      "7": "키키링",
+      "8": "어흥염",
+      "9": "리자몽",
+      "10": "찌르호크",
+      "11": "님피아",
+      "12": "라이츄",
+      "13": "마기라스",
+      "14": "브리두라스",
+      "15": "패리퍼",
+      "16": "밀로틱",
+      "17": "프테라",
+      "18": "이상해꽃",
+      "19": "눈여아",
+      "20": "마폭시",
+      "21": "대짱이",
+      "22": "타부자고",
+      "23": "망나뇽",
+      "24": "오롱털",
+      "25": "코터스",
+      "26": "거북왕",
+      "27": "파밀리쥐",
+      "28": "플라엣테(영원의 꽃)",
+      "29": "알로라 나인테일",
+      "30": "깜까미",
+      "31": "몰드류",
+      "32": "킬라플로르",
+      "33": "히스이 윈디",
+      "34": "파이어로",
+      "35": "메타그로스",
+      "36": "팬텀",
+      "37": "입치트",
+      "38": "핫삼",
+      "39": "저승갓숭",
+      "40": "스코빌런",
+      "41": "왕구리",
+      "42": "워시로토무",
+      "43": "달코퀸",
+      "44": "캥카",
+      "45": "짜랑고우거",
+      "46": "누리레느",
+      "47": "아머까오",
+      "48": "가디안",
+      "49": "마스카나",
+      "50": "파라블레이즈",
+      "51": "비비용",
+      "52": "번치코",
+      "53": "더시마사리",
+      "54": "엘레이드",
+      "55": "삼삼드래",
+      "56": "히스이 조로아크",
+      "57": "샹델라",
+      "58": "따라큐",
+      "59": "폭타",
+      "60": "개굴닌자",
+      "61": "하랑우탄",
+      "62": "드래펄트",
+      "63": "맘모꾸리",
+      "64": "루가루암(황혼의 모습)",
+      "65": "히스이 블레이범",
+      "66": "포푸니라",
+      "67": "히스이 대검귀",
+      "68": "갸라도스",
+      "69": "나무킹",
+      "70": "브리무음",
+      "71": "불카모스",
+      "72": "곤율거니",
+      "73": "두드리짱",
+      "74": "칼라마네로",
+      "75": "픽시",
+      "76": "메가니움",
+      "77": "사마자르",
+      "78": "찌리배리",
+      "79": "냐오닉스(수컷)",
+      "80": "킬가르도(실드폼)",
+      "81": "카디나르마",
+      "82": "배바닐라",
+      "83": "잠만보",
+      "84": "화염레오",
+      "85": "장침바루",
+      "86": "루카리오",
+      "87": "할비롱",
+      "88": "저리더프",
+      "89": "깨비물거미",
+      "90": "히트로토무",
+      "91": "대쓰여너(암컷)",
+      "92": "일레도리자드",
+      "93": "가라르 야도킹",
+      "94": "마릴리",
+      "95": "강철톤",
+      "96": "이어롭",
+      "97": "묘두기",
+      "98": "하마돈",
+      "99": "전룡",
+      "100": "아쿠스타",
+      "101": "만마드",
+      "102": "파비코리",
+      "103": "글라이온",
+      "104": "후딘",
+      "105": "다부니",
+      "106": "골루그",
+      "107": "클레스퍼트라",
+      "108": "쥬피썬더",
+      "109": "눈설왕",
+      "110": "블래키",
+      "111": "엠페르트",
+      "112": "히스이 미끄래곤",
+      "113": "루차불",
+      "114": "샤로다",
+      "115": "글레이시아",
+      "116": "모단단게",
+      "117": "라플레시아",
+      "118": "클레피",
+      "119": "보스로라",
+      "120": "브리가론",
+      "121": "돌핀맨(나이브폼)",
+      "122": "히스이 모크나이퍼",
+      "123": "샤미드",
+      "124": "드래캄",
+      "125": "장크로다일",
+      "126": "블로스터",
+      "127": "나인테일",
+      "128": "신비록",
+      "129": "프레프티르",
+      "130": "라우드본",
+      "131": "노보청",
+      "132": "화강돌",
+      "133": "마휘핑",
+      "134": "헬가",
+      "135": "메타몽",
+      "136": "독개굴",
+      "137": "요가램",
+      "138": "다크펫",
+      "139": "마임꽁꽁",
+      "140": "견고라스",
+      "141": "윈디",
+      "142": "가라르 야도란",
+      "143": "무장조",
+      "144": "거대코뿌리",
+      "145": "레파르다스",
+      "146": "데스니칸",
+      "147": "팔데아 켄타로스(워터종)",
+      "148": "야도란",
+      "149": "초염몽",
+      "150": "헤라크로스",
+      "151": "데스판",
+      "152": "에브이",
+      "153": "악비아르",
+      "154": "음번",
+      "155": "아마루르가",
+      "156": "펜드라",
+      "157": "란쿨루스",
+      "158": "괴력몬",
+      "159": "염뉴트",
+      "160": "꿈트렁",
+      "161": "과미드라",
+      "162": "토대부기",
+      "163": "썬더볼트",
+      "164": "웨이니발",
+      "165": "피카츄",
+      "166": "블레이범",
+      "167": "피죤투",
+      "168": "야도킹",
+      "169": "쁘사이저",
+      "170": "치렁",
+      "171": "독침붕",
+      "172": "모르페코(배부른 모양)",
+      "173": "샤크니아",
+      "174": "콜로솔트",
+      "175": "얼음귀신",
+      "176": "램펄드",
+      "177": "프로스트로토무",
+      "178": "대로트",
+      "179": "우츠보트",
+      "180": "히스이 크레베이스",
+      "181": "왕큰부리",
+      "182": "팔데아 켄타로스(블레이즈종)",
+      "183": "리피아",
+      "184": "툰베어",
+      "185": "루가루암(한낮의 모습)",
+      "186": "대여르",
+      "187": "앱솔",
+      "188": "커트로토무",
+      "189": "염무왕",
+      "190": "몽얌나",
+      "191": "냐오닉스(암컷)",
+      "192": "미끄래곤",
+      "193": "부란다",
+      "194": "플라제스",
+      "195": "로즈레이드",
+      "196": "펌킨인(특대과종)",
+      "197": "파르토",
+      "198": "거북손데스",
+      "199": "조로아크",
+      "200": "아리아도스"
+    }
+};
+
+let mode = "single";
+let lastResults = [];
+
+function setMode(next) {
+  mode = next;
+  document.getElementById("singleTab").classList.toggle("active", mode === "single");
+  document.getElementById("doubleTab").classList.toggle("active", mode === "double");
+  document.getElementById("modeText").textContent = "현재 모드: " + (mode === "single" ? "싱글" : "더블");
+  if (document.getElementById("numbers").value.trim()) searchPokemon();
+}
+
+function searchPokemon() {
+  const raw = document.getElementById("numbers").value.trim();
+  const msg = document.getElementById("message");
+  const results = document.getElementById("results");
+  msg.innerHTML = "";
+  results.innerHTML = "";
+  lastResults = [];
+
+  if (!raw) {
+    results.innerHTML = '<div class="empty">번호를 입력해 주세요.</div>';
+    return;
+  }
+
+  const tokens = raw.split(/[\s,\/]+/).filter(Boolean);
+  if (tokens.length > 6) {
+    msg.innerHTML = '<div class="error">최대 6마리까지 검색할 수 있어요. 현재 ' + tokens.length + '개가 입력되었습니다.</div>';
+    return;
+  }
+
+  const invalid = [];
+  tokens.forEach(token => {
+    if (!/^\d+$/.test(token) || Number(token) < 1 || Number(token) > 200 || !data[mode][token]) {
+      invalid.push(token);
+    }
+  });
+
+  if (invalid.length) {
+    msg.innerHTML = '<div class="error">확인할 수 없는 번호: ' + invalid.join(", ") + '<br>1~200 사이의 번호만 입력해 주세요.</div>';
+    return;
+  }
+
+  tokens.forEach(token => {
+    const name = data[mode][token];
+    lastResults.push({number: token, name});
+    const div = document.createElement("div");
+    div.className = "result";
+    div.innerHTML = '<span class="num">' + token + '번</span><span class="name">' + name + '</span>';
+    results.appendChild(div);
+  });
+}
+
+function clearAll() {
+  document.getElementById("numbers").value = "";
+  document.getElementById("message").innerHTML = "";
+  document.getElementById("results").innerHTML = '<div class="empty">번호를 입력하면 포켓몬 이름이 여기에 표시됩니다.</div>';
+  lastResults = [];
+}
+
+async function copyResults() {
+  if (!lastResults.length) {
+    document.getElementById("message").innerHTML = '<div class="error">먼저 번호를 검색해 주세요.</div>';
+    return;
+  }
+  const text = lastResults.map(x => x.number + "번 " + x.name).join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById("message").innerHTML = '<div style="margin-top:12px;color:#16794a;font-size:14px">✓ 결과를 클립보드에 복사했습니다.</div>';
+  } catch(e) {
+    document.getElementById("message").innerHTML = '<div class="error">복사에 실패했습니다. 결과를 직접 선택해 주세요.</div>';
+  }
+}
+</script>
+</body>
+</html>
